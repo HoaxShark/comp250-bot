@@ -25,12 +25,16 @@ public class WorkersForLife extends AbstractionLayerAI {
     private UnitTypeTable utt;
     private UnitType workerType;
     private UnitType baseType;
+    private UnitType lightType;
+    private UnitType barracksType;
     
     public WorkersForLife(UnitTypeTable utt) {
         super(new AStarPathFinding());
         this.utt = utt;
         workerType = utt.getUnitType("Worker");
         baseType = utt.getUnitType("Base");
+        lightType = utt.getUnitType("Light");
+        barracksType = utt.getUnitType("Barracks");
     }
     
 
@@ -72,6 +76,24 @@ public class WorkersForLife extends AbstractionLayerAI {
             rushWorkersBehavior(workers, p, pgs, gs);
         }
         
+        List<Unit> light = new LinkedList<Unit>();
+        for (Unit u : pgs.getUnits()) {
+            if (u.getType() == lightType
+                    && u.getPlayer() == player) {
+                light.add(u);
+            }
+        }
+        // Behaviour of light
+        if(isRush){
+            for (Unit u : light) {
+                meleeUnitBehavior(u, p, gs);
+            }
+        } else {
+            for (Unit u : light) {
+                meleeUnitBehavior(u, p, gs);
+            }
+        }
+        
         // Behaviour of bases:
         for (Unit u : pgs.getUnits()) {
             if (u.getType() == baseType
@@ -82,6 +104,18 @@ public class WorkersForLife extends AbstractionLayerAI {
                     baseBehavior(u, p, pgs);
                 }else {
                     baseBehavior(u, p, pgs);
+                }
+            }
+        }
+        
+        // Behaviour of bases:
+        for (Unit u : pgs.getUnits()) {
+            if (u.getType() == barracksType
+                    && u.getPlayer() == player
+                    && gs.getActionAssignment(u) == null) {
+                
+                if(p.getResources() == lightType.cost){
+                	train(u, lightType);
                 }
             }
         }
@@ -113,6 +147,7 @@ public class WorkersForLife extends AbstractionLayerAI {
     public void rushWorkersBehavior(List<Unit> workers, Player p, PhysicalGameState pgs, GameState gs) {
         int nbases = 0;
         int nworkers = 0;
+        int nbarracks = 0;
         
         List<Unit> freeWorkers = new LinkedList<Unit>();
         List<Unit> battleWorkers = new LinkedList<Unit>();
@@ -124,18 +159,19 @@ public class WorkersForLife extends AbstractionLayerAI {
                     && u2.getPlayer() == p.getID()) {
                 nbases++;
             }
+            if (u2.getType() == barracksType
+                    && u2.getPlayer() == p.getID()) {
+                nbarracks++;
+            }
             if (u2.getType() == workerType
                     && u2.getPlayer() == p.getID()) {
                 nworkers++;
             }
         }
-        // If no resources available sends all workers to battle
-        //if (p.getResources() == 0){
-        //    battleWorkers.addAll(workers);
-        //} 
+       
         // Applies a worker for each base to free workers if resources are at 1
-        if (workers.size() > (nbases)) {
-            for (int n = 0; n < (nbases); n++) {
+        if (workers.size() > (nbases+1)) {
+            for (int n = 0; n < (nbases+1); n++) {
                 freeWorkers.add(workers.get(0));
                 workers.remove(0);
             }
@@ -158,6 +194,13 @@ public class WorkersForLife extends AbstractionLayerAI {
         }
 
         List<Integer> reservedPositions = new LinkedList<Integer>();
+        if (nbarracks == 0 && !freeWorkers.isEmpty())
+        {
+            if (p.getResources() >= 6) {
+            	Unit u = freeWorkers.remove(0);
+                buildIfNotAlreadyBuilding(u, barracksType, u.getX(), u.getY(), reservedPositions, p, pgs);
+            }
+        }
         if (nbases == 0 && !freeWorkers.isEmpty()) {
             // build a base:
             if (p.getResources() >= baseType.cost) {
@@ -230,7 +273,7 @@ public class WorkersForLife extends AbstractionLayerAI {
             attack(u, closestEnemy);
         }
     }
-    
+        
     public void meleeDefenceUnitBehavior(Unit u, Player p, GameState gs) {
         PhysicalGameState pgs = gs.getPhysicalGameState();
         Unit closestEnemy = null;
