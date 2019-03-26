@@ -116,6 +116,7 @@ public class WorkersForLife extends AbstractionLayerAI {
         
         List<Unit> freeWorkers = new LinkedList<Unit>();
         List<Unit> battleWorkers = new LinkedList<Unit>();
+        List<Unit> defenceWorkers = new LinkedList<Unit>();
         
         // Checks number of worker and bases the player has
         for (Unit u2 : pgs.getUnits()) {
@@ -137,6 +138,13 @@ public class WorkersForLife extends AbstractionLayerAI {
             for (int n = 0; n < (nbases); n++) {
                 freeWorkers.add(workers.get(0));
                 workers.remove(0);
+            }
+            if (defenceWorkers.size() > 2)
+            {
+            	for (int n = 0; n < 2; n++) {
+                    defenceWorkers.add(workers.get(0));
+                    workers.remove(0);
+            	}
             }
             // All other workers to battle
             battleWorkers.addAll(workers);
@@ -161,6 +169,10 @@ public class WorkersForLife extends AbstractionLayerAI {
         
         for (Unit u : battleWorkers) {
             meleeUnitBehavior(u, p, gs);
+        }
+        
+        for (Unit u : defenceWorkers) {
+        	meleeDefenceUnitBehavior(u, p, gs);
         }
 
         // harvest with all the free workers:
@@ -215,7 +227,31 @@ public class WorkersForLife extends AbstractionLayerAI {
             }
         }
         if (closestEnemy != null) {
-//            System.out.println("LightRushAI.meleeUnitBehavior: " + u + " attacks " + closestEnemy);
+            attack(u, closestEnemy);
+        }
+    }
+    
+    public void meleeDefenceUnitBehavior(Unit u, Player p, GameState gs) {
+        PhysicalGameState pgs = gs.getPhysicalGameState();
+        Unit closestEnemy = null;
+        Unit base = null;
+        int closestDistance = 0;
+        
+        for (Unit u2 : pgs.getUnits()) {
+            if (u2.getType().isStockpile && u2.getPlayer() == p.getID()) {
+            	base = u2;
+            }
+        }  
+        for (Unit u2 : pgs.getUnits()) {
+            if (u2.getPlayer() >= 0 && u2.getPlayer() != p.getID()) {
+                int d = Math.abs(u2.getX() - base.getX()) + Math.abs(u2.getY() - base.getY());
+                if (closestEnemy == null || d < closestDistance) {
+                    closestEnemy = u2;
+                    closestDistance = d;
+                }
+            }
+        }
+        if (closestEnemy != null) {
             attack(u, closestEnemy);
         }
     }
