@@ -33,7 +33,7 @@ public class WorkersForLife extends AbstractionLayerAI {
         this.utt = utt;
         workerType = utt.getUnitType("Worker");
         baseType = utt.getUnitType("Base");
-        lightType = utt.getUnitType("Light");
+        lightType = utt.getUnitType("Ranged");
         barracksType = utt.getUnitType("Barracks");
     }
     
