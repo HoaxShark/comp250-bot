@@ -67,6 +67,7 @@ public class WorkersForLife extends AbstractionLayerAI
     {
         PhysicalGameState pgs = gs.getPhysicalGameState();
         Player p = gs.getPlayer(player);
+        Unit base = null;
         
         // Define map size
         if ((pgs.getWidth() * pgs.getHeight()) <= 64)
@@ -83,10 +84,15 @@ public class WorkersForLife extends AbstractionLayerAI
             {
                 workers.add(u);
             }
+        	// Our base unit
+        	if (u.getType().isStockpile && u.getPlayer() == p.getID()) 
+            {
+        		base = u;
+            }
         }
         
         // Behaviour of workers:
-        rushWorkersBehavior(workers, p, pgs, gs);
+        workersBehavior(workers, p, pgs, gs);
 
         // Populate our ranged list
         List<Unit> ranged = new LinkedList<Unit>();
@@ -101,7 +107,7 @@ public class WorkersForLife extends AbstractionLayerAI
         // Behaviour of ranged:
         for (Unit u : ranged) 
         {
-            meleeUnitBehavior(u, p, gs);
+        	rangedUnitBehavior(u, base, p, gs);
         }
         
         // Behaviour of bases:
@@ -165,7 +171,7 @@ public class WorkersForLife extends AbstractionLayerAI
         }
     }
     
-    public void rushWorkersBehavior(List<Unit> workers, Player p, PhysicalGameState pgs, GameState gs) {
+    public void workersBehavior(List<Unit> workers, Player p, PhysicalGameState pgs, GameState gs) {
         int nbases = 0;
         int nworkers = 0;
         int nbarracks = 0;
@@ -373,26 +379,18 @@ public class WorkersForLife extends AbstractionLayerAI
             attack(u, closestEnemy);
         }
     }
-        
-    public void meleeDefenceUnitBehavior(Unit u, Player p, GameState gs) 
-    {
+    
+    public void rangedUnitBehavior(Unit u, Unit base, Player p, GameState gs) {
         PhysicalGameState pgs = gs.getPhysicalGameState();
         Unit closestEnemy = null;
-        Unit base = null;
+        boolean running = false;
         int closestDistance = 0;
-        
-        for (Unit u2 : pgs.getUnits()) 
-        {
-            if (u2.getType().isStockpile && u2.getPlayer() == p.getID()) 
-            {
-            	base = u2;
-            }
-        }  
+        // Get closestEnemy
         for (Unit u2 : pgs.getUnits()) 
         {
             if (u2.getPlayer() >= 0 && u2.getPlayer() != p.getID()) 
             {
-                int d = Math.abs(u2.getX() - base.getX()) + Math.abs(u2.getY() - base.getY());
+                int d = Math.abs(u2.getX() - u.getX()) + Math.abs(u2.getY() - u.getY());
                 if (closestEnemy == null || d < closestDistance) 
                 {
                     closestEnemy = u2;
@@ -400,9 +398,14 @@ public class WorkersForLife extends AbstractionLayerAI
                 }
             }
         }
-        if (closestEnemy != null) 
+        // Attack if enemy exists
+        if (closestEnemy != null && closestDistance >= 2) 
         {
             attack(u, closestEnemy);
+        }
+        else 
+        {
+        	move(u, base.getX(), base.getY());
         }
     }
     
