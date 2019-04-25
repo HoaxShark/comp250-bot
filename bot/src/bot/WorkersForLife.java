@@ -312,8 +312,8 @@ public class WorkersForLife extends AbstractionLayerAI
 	            // If we have a base and resource then harvest!
 	            if (closestResource != null && closestBase != null) 
 	            {
-	            	harvest(u, closestResource, closestBase);
-	                /*AbstractAction aa = getAbstractAction(u);
+	            	//harvest(u, closestResource, closestBase);
+	                AbstractAction aa = getAbstractAction(u);
 	                if (aa instanceof Harvest) 
 	                {
 	                    Harvest h_aa = (Harvest) aa;
@@ -325,7 +325,7 @@ public class WorkersForLife extends AbstractionLayerAI
 	                else 
 	                {
 	                    harvest(u, closestResource, closestBase);
-	                }*/
+	                }
 	            }
 	        }
         }
