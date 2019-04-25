@@ -39,6 +39,7 @@ public class WorkersForLife extends AbstractionLayerAI
         baseType = utt.getUnitType("Base");
         rangedType = utt.getUnitType("Ranged");
         barracksType = utt.getUnitType("Barracks");
+        // Set up map size variable
         tinyMap = false;
     }
     
@@ -73,7 +74,7 @@ public class WorkersForLife extends AbstractionLayerAI
             tinyMap = true;
         }
         
-        // Populate our worker list
+        // Populate worker list
         List<Unit> workers = new LinkedList<Unit>();
         for (Unit u : pgs.getUnits()) 
         {
@@ -83,6 +84,7 @@ public class WorkersForLife extends AbstractionLayerAI
                 workers.add(u);
             }
         }
+        
         // Behaviour of workers:
         rushWorkersBehavior(workers, p, pgs, gs);
 
@@ -171,13 +173,13 @@ public class WorkersForLife extends AbstractionLayerAI
         int workerOffset = 0; // Allocates more free workers
         Unit base = null;
         
-        for (Unit u2 : pgs.getUnits()) 
-        {
-           
-        } 
-        
         List<Unit> freeWorkers = new LinkedList<Unit>();
         List<Unit> battleWorkers = new LinkedList<Unit>();
+        
+        if (workers.isEmpty()) 
+        {
+            return;
+        }
         
         // Checks number of worker and bases the player has
         for (Unit u2 : pgs.getUnits()) 
@@ -221,16 +223,22 @@ public class WorkersForLife extends AbstractionLayerAI
         // If no resources left to be gathered
         if (nresources == 0)
         {
-        	// All workers to battle
-            battleWorkers.addAll(workers);
+        	for (int n = 0; n < workers.size(); n++) 
+            {
+            	if (!workers.isEmpty())
+            	{
+            		battleWorkers.add(workers.get(0));
+                    workers.remove(0);
+            	}
+            }
         }
         
         // Applies workers for each base to free workers
-        if (workers.size() >= (nbases))
+        if (workers.size() >= (nbases) && nresources !=0)
         {
             for (int n = 0; n < (nbases + workerOffset); n++) 
             {
-            	if (workers.size() != 0)
+            	if (!workers.isEmpty())
             	{
                     freeWorkers.add(workers.get(0));
                     workers.remove(0);
@@ -239,11 +247,6 @@ public class WorkersForLife extends AbstractionLayerAI
             // All other workers to battle
             battleWorkers.addAll(workers);
         } 
-
-        if (workers.isEmpty()) 
-        {
-            return;
-        }
 
         List<Integer> reservedPositions = new LinkedList<Integer>();
         if (nbarracks == 0 && !freeWorkers.isEmpty())
@@ -271,56 +274,60 @@ public class WorkersForLife extends AbstractionLayerAI
         }
 
         // Harvest with all the free workers:
-        for (Unit u : freeWorkers) 
+        if (nresources != 0) 
         {
-            Unit closestBase = null;
-            Unit closestResource = null;
-            int closestDistance = 0;
-            // Get closest resource
-            for (Unit u2 : pgs.getUnits()) 
-            {
-                if (u2.getType().isResource) 
-                {
-                    int d = Math.abs(u2.getX() - u.getX()) + Math.abs(u2.getY() - u.getY());
-                    if (closestResource == null || d < closestDistance) 
-                    {
-                        closestResource = u2;
-                        closestDistance = d;
-                    }
-                }
-            }
-            // Reset closestDistance
-            closestDistance = 0;
-            // Get closestBase
-            for (Unit u2 : pgs.getUnits()) 
-            {
-                if (u2.getType().isStockpile && u2.getPlayer() == p.getID()) 
-                {
-                    int d = Math.abs(u2.getX() - u.getX()) + Math.abs(u2.getY() - u.getY());
-                    if (closestBase == null || d < closestDistance) 
-                    {
-                        closestBase = u2;
-                        closestDistance = d;
-                    }
-                }
-            }
-            // If we have a base and resource then harvest!
-            if (closestResource != null && closestBase != null) 
-            {
-                AbstractAction aa = getAbstractAction(u);
-                if (aa instanceof Harvest) 
-                {
-                    Harvest h_aa = (Harvest) aa;
-                    if (h_aa.getTarget() != closestResource || h_aa.getBase() != closestBase) 
-                    {
-                        harvest(u, closestResource, closestBase);
-                    }
-                } 
-                else 
-                {
-                    harvest(u, closestResource, closestBase);
-                }
-            }
+	        for (Unit u : freeWorkers) 
+	        {
+	            Unit closestBase = null;
+	            Unit closestResource = null;
+	            int closestDistance = 0;
+	            // Get closest resource
+	            for (Unit u2 : pgs.getUnits()) 
+	            {
+	                if (u2.getType().isResource) 
+	                {
+	                    int d = Math.abs(u2.getX() - u.getX()) + Math.abs(u2.getY() - u.getY());
+	                    if (closestResource == null || d < closestDistance) 
+	                    {
+	                        closestResource = u2;
+	                        closestDistance = d;
+	                    }
+	                }
+	            }
+	            // Reset closestDistance
+	            closestDistance = 0;
+	            // Get closestBase
+	            for (Unit u2 : pgs.getUnits()) 
+	            {
+	                if (u2.getType().isStockpile && u2.getPlayer() == p.getID()) 
+	                {
+	                    int d = Math.abs(u2.getX() - u.getX()) + Math.abs(u2.getY() - u.getY());
+	                    if (closestBase == null || d < closestDistance) 
+	                    {
+	                        closestBase = u2;
+	                        closestDistance = d;
+	                    }
+	                }
+	            }
+	            // If we have a base and resource then harvest!
+	            if (closestResource != null && closestBase != null) 
+	            {
+	            	harvest(u, closestResource, closestBase);
+	                /*AbstractAction aa = getAbstractAction(u);
+	                if (aa instanceof Harvest) 
+	                {
+	                    Harvest h_aa = (Harvest) aa;
+	                    if (h_aa.getTarget() != closestResource || h_aa.getBase() != closestBase) 
+	                    {
+	                        harvest(u, closestResource, closestBase);
+	                    }
+	                } 
+	                else 
+	                {
+	                    harvest(u, closestResource, closestBase);
+	                }*/
+	            }
+	        }
         }
     }
     
