@@ -254,7 +254,19 @@ public class WorkersForLife extends AbstractionLayerAI
         	// Build a barracks
             if (p.getResources() >= 6) {
             	Unit u = freeWorkers.remove(0);
-                buildIfNotAlreadyBuilding(u, barracksType, base.getX(), (base.getY() + 3) , reservedPositions, p, pgs);
+            	// subtract half the width from the base location
+            	int baseX = base.getX();
+            	int xLocation = baseX - (pgs.getWidth()/2);
+            	// If positive we are on the right
+            	if (xLocation >= 0)
+            	{
+                    buildIfNotAlreadyBuilding(u, barracksType, (base.getX()-2), (base.getY()-2) , reservedPositions, p, pgs);
+            	}
+            	// If negative we are on the left
+            	if (xLocation <= 0)
+            	{
+                    buildIfNotAlreadyBuilding(u, barracksType, (base.getX()+2), (base.getY()+2) , reservedPositions, p, pgs);
+            	}
             }
         }
         
