@@ -262,12 +262,12 @@ public class WorkersForLife extends AbstractionLayerAI
                 	// If positive we are on the right
                 	if (xLocation >= 0)
                 	{
-                        buildIfNotAlreadyBuilding(u, barracksType, (base.getX()-2), (base.getY()-2) , reservedPositions, p, pgs);
+                        buildIfNotAlreadyBuilding(u, barracksType, (base.getX()-1), (base.getY()-1) , reservedPositions, p, pgs);
                 	}
                 	// If negative we are on the left
                 	if (xLocation <= 0)
                 	{
-                        buildIfNotAlreadyBuilding(u, barracksType, (base.getX()+2), (base.getY()+2) , reservedPositions, p, pgs);
+                        buildIfNotAlreadyBuilding(u, barracksType, (base.getX()+1), (base.getY()+1) , reservedPositions, p, pgs);
                 	}
             	}
             	if (base == null)
