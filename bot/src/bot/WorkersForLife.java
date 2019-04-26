@@ -401,13 +401,17 @@ public class WorkersForLife extends AbstractionLayerAI
         // Attack if enemy exists
         if (closestEnemy != null && closestDistance >= 3) 
         {
-        	System.out.println(closestDistance);
+        	//System.out.println(closestDistance);
             attack(u, closestEnemy);
         }
-        else 
+        else if (base != null)
         {
-        	System.out.println("runnings");
+        	//System.out.println("runnings");
         	move(u, (base.getX()+1), (base.getY()+1));
+        }
+        else
+        {
+        	attack(u, closestEnemy);
         }
     }
     
