@@ -272,7 +272,7 @@ public class WorkersForLife extends AbstractionLayerAI
                 	// If negative we are on the left
                 	if (xLocation <= 0)
                 	{
-                        buildIfNotAlreadyBuilding(u, barracksType, (base.getX()+1), (base.getY()+1) , reservedPositions, p, pgs);
+                        buildIfNotAlreadyBuilding(u, barracksType, (base.getX()+3), (base.getY()+1) , reservedPositions, p, pgs);
                 	}
             	}
             	if (base == null)
@@ -392,7 +392,7 @@ public class WorkersForLife extends AbstractionLayerAI
         PhysicalGameState pgs = gs.getPhysicalGameState();
         Unit closestEnemy = null;
         Unit baseEnemy = null;
-        int closestDistance = 0;
+        int closestDistance = 10;
         // Get closestEnemy
         for (Unit u2 : pgs.getUnits()) 
         {
@@ -417,7 +417,7 @@ public class WorkersForLife extends AbstractionLayerAI
             attack(u, closestEnemy);
         }
         // run unless already at the spot to run too
-        else if (base != null)
+        else if (base != null && closestDistance < 3)
         {
         	//System.out.println("runnings");
         	move(u, (base.getX()+1), (base.getY()+1));
