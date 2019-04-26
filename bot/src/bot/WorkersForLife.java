@@ -164,8 +164,8 @@ public class WorkersForLife extends AbstractionLayerAI
                 nbases++;
             }
         }
-        if (p.getResources() >= workerType.cost
-        		&& nworkers <= enemyWorkers) 
+        if (p.getResources() >= workerType.cost)
+        		//&& nworkers <= enemyWorkers) 
         {
             train(u, workerType);
         }
