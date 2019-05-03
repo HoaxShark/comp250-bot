@@ -32,6 +32,7 @@ public class WorkersForLife extends AbstractionLayerAI
     private boolean tinyMap;
     
     private Unit base = null;
+    private Unit barracks = null;
     private int rangedOrLight;
     
     public WorkersForLife(UnitTypeTable utt) 
@@ -74,6 +75,7 @@ public class WorkersForLife extends AbstractionLayerAI
         PhysicalGameState pgs = gs.getPhysicalGameState();
         Player p = gs.getPlayer(player);
         base = null;
+        barracks = null;
         
         // Define map size
         if ((pgs.getWidth() * pgs.getHeight()) <= 64)
@@ -116,13 +118,21 @@ public class WorkersForLife extends AbstractionLayerAI
                 light.add(u);
             }
         }
+        
         // Behaviour of ranged:
         for (Unit u : ranged) 
         {
         	rangedUnitBehavior(u, p, gs);
+        	if (barracks != null)
+        	{
+	        	if (getDistance(barracks, u) == 1)
+	        	{
+	        		stackUnits(u, gs, 1);
+	        	}
+        	}
         }
         
-     // Behaviour of ranged:
+        // Behaviour of ranged:
         for (Unit u : light) 
         {
         	meleeUnitBehavior(u, p, gs);
@@ -336,19 +346,6 @@ public class WorkersForLife extends AbstractionLayerAI
         		counter++;
         	}
         }
-        
-        // If battle worker is next to base send it back to the mines
-    	//for (int n = 0; n < battleWorkers.size(); n++) 
-        //{
-        	//if (!battleWorkers.isEmpty()) 
-        	//{
-        		//if (getDistance(base, battleWorkers.get(n)) == 1)
-	        	//{
-	        		//freeWorkers.add(battleWorkers.get(n));
-	        		//battleWorkers.remove(n);
-	        	//}
-        	//}
-        //}
 
         // Harvest with all the free workers:
         if (nresources != 0) 
