@@ -302,7 +302,7 @@ public class WorkersForLife extends AbstractionLayerAI
         	meleeUnitBehavior(u, p, gs);
         }
         
-        if (battleWorkers.size() >= 3)
+        if (battleWorkers.size() >= 3 && base != null)
         {
         	int counter = 0;
         	for(Unit u : battleWorkers)
