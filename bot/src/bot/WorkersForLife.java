@@ -417,7 +417,10 @@ public class WorkersForLife extends AbstractionLayerAI
             	attack(u, closestEnemy);
             }
             else {
-            	stackUnits(u,gs,0);
+            	if (base != null)
+            	{
+            		stackUnits(u,gs,0);
+            	}
             }
         }
         else if (baseEnemy != null)
