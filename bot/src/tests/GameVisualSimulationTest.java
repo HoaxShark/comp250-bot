@@ -28,7 +28,7 @@ public class GameVisualSimulationTest {
     public static void main(String args[]) throws Exception {
 
         UnitTypeTable utt = new UnitTypeTable();              //8x8/basesWorkers8x8 //NoWhereToRun9x8 //basesWorkers8x8Obstacle.xml
-        PhysicalGameState pgs = PhysicalGameState.load("../microrts/maps/NoWhereToRun9x8.xml", utt);
+        PhysicalGameState pgs = PhysicalGameState.load("../microrts/maps/24x24/basesWorkers24x24.xml", utt);
 
         GameState gs = new GameState(pgs, utt);
         int MAXCYCLES = 5000;
@@ -36,8 +36,8 @@ public class GameVisualSimulationTest {
         boolean gameover = false;
         
         //AI ai1 = new WorkerRush(utt, new BFSPathFinding());
-        AI ai1 = new WorkersForLife(utt);
-        AI ai2 = new WorkerRush(utt, new BFSPathFinding());
+        AI ai2 = new WorkersForLife(utt);
+        AI ai1 = new WorkerRush(utt, new BFSPathFinding());
         
         JFrame w = PhysicalGameStatePanel.newVisualizer(gs,640,640,false,PhysicalGameStatePanel.COLORSCHEME_BLACK);
 //        JFrame w = PhysicalGameStatePanel.newVisualizer(gs,640,640,false,PhysicalGameStatePanel.COLORSCHEME_WHITE);

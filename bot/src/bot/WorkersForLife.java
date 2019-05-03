@@ -167,7 +167,7 @@ public class WorkersForLife extends AbstractionLayerAI
                 nbases++;
             }
         }
-        if (p.getResources() >= workerType.cost)
+        if (p.getResources() >= workerType.cost && nworkers <= 5)
         {
             train(u, workerType);
         }
@@ -176,6 +176,7 @@ public class WorkersForLife extends AbstractionLayerAI
     public void workersBehavior(List<Unit> workers, Player p, PhysicalGameState pgs, GameState gs) {
         int nbases = 0;
         int nworkers = 0;
+        int nranged = 0;
         int nbarracks = 0;
         int nresources = 0;
         int workerOffset = 0; // Allocates more free workers
@@ -208,6 +209,12 @@ public class WorkersForLife extends AbstractionLayerAI
                     && u2.getPlayer() == p.getID()) 
             {
                 nworkers++;
+            }
+            // Our ranged
+            if (u2.getType() == rangedType
+                    && u2.getPlayer() == p.getID()) 
+            {
+                nranged++;
             }
             // Resource piles on the map
             if (u2.getType().isResource) 
@@ -264,12 +271,12 @@ public class WorkersForLife extends AbstractionLayerAI
                 	// If positive we are on the right
                 	if (xLocation >= 0)
                 	{
-                        buildIfNotAlreadyBuilding(u, barracksType, (base.getX()-1), (base.getY()-1) , reservedPositions, p, pgs);
+                        buildIfNotAlreadyBuilding(u, barracksType, (base.getX()+1), (base.getY()-1) , reservedPositions, p, pgs);
                 	}
                 	// If negative we are on the left
                 	if (xLocation <= 0)
                 	{
-                        buildIfNotAlreadyBuilding(u, barracksType, (base.getX()+3), (base.getY()+1) , reservedPositions, p, pgs);
+                        buildIfNotAlreadyBuilding(u, barracksType, (base.getX()-1), (base.getY()+3) , reservedPositions, p, pgs);
                 	}
             	}
             	if (base == null)
@@ -293,6 +300,22 @@ public class WorkersForLife extends AbstractionLayerAI
         for (Unit u : battleWorkers) 
         {
         	meleeUnitBehavior(u, p, gs);
+        }
+        
+        if (battleWorkers.size() >= 3)
+        {
+        	int counter = 0;
+        	for(Unit u : battleWorkers)
+        	{
+        		System.out.println(counter);
+        		if (counter >= 2)
+        		{
+        			
+        			System.out.println("stacking battle worker");
+        			stackUnits(u, gs, 0);
+        		}
+        		counter++;
+        	}
         }
         
         // If battle worker is next to base send it back to the mines
@@ -412,16 +435,17 @@ public class WorkersForLife extends AbstractionLayerAI
         // Attack if enemy exists
         if (closestEnemy != null) 
         {
-        	boolean checkPath = pf.pathExists(u, (closestEnemy.getX()+closestEnemy.getY())*pgs.getWidth(), gs, null);
-            if (checkPath) {
-            	attack(u, closestEnemy);
-            }
-            else {
-            	if (base != null)
-            	{
-            		stackUnits(u,gs,0);
-            	}
-            }
+        	attack(u, closestEnemy);
+        	//boolean checkPath = pf.pathExists(u, (closestEnemy.getX()+closestEnemy.getY())*pgs.getWidth(), gs, null);
+            //if (checkPath) {
+            	//attack(u, closestEnemy);
+            //}
+            //else {
+            	//if (base != null)
+            	//{
+            		//stackUnits(u,gs,0);
+            	//}
+            //}
         }
         else if (baseEnemy != null)
         {
@@ -438,12 +462,14 @@ public class WorkersForLife extends AbstractionLayerAI
         		boolean checkPath = pf.pathExists(u, ((0 + offset)+(pgs.getHeight()-n)*pgs.getWidth()), gs, null);
         		if (checkPath) {
         			move(u, (0+offset), (pgs.getHeight()-n));
+        			break;
         		}
         	}
         	else {
-        		boolean checkPath = pf.pathExists(u, ((pgs.getWidth()-1-offset)+(1+n)*pgs.getWidth()), gs, null);
+        		boolean checkPath = pf.pathExists(u, ((pgs.getWidth()-1-offset)+(0+n)*pgs.getWidth()), gs, null);
         		if (checkPath) {
-        			move(u, ((pgs.getWidth()-1)-offset), 1+n);
+        			move(u, ((pgs.getWidth()-1)-offset), 0+n);
+        			break;
         		}
         	}
     	}
