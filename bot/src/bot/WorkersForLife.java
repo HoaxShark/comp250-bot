@@ -158,13 +158,13 @@ public class WorkersForLife extends AbstractionLayerAI
                     && gs.getActionAssignment(u) == null) 
             {
                 // If enough resources train ranged unit
-                if(p.getResources() >= rangedType.cost && rangedOrLight == 1)
+                if(p.getResources() >= rangedType.cost && rangedOrLight == 0)
                 {
                 	train(u, rangedType);
                 	rangedOrLight = 1;
                 }
                 // If enough resources train light unit
-                else if(p.getResources() >= lightType.cost && rangedOrLight ==0)
+                else if(p.getResources() >= lightType.cost && rangedOrLight == 1)
                 {
                 	train(u, lightType);
                 	rangedOrLight = 0;
