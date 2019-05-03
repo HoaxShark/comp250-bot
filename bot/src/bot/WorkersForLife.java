@@ -230,7 +230,7 @@ public class WorkersForLife extends AbstractionLayerAI
         }
         
         // If no resources left to be gathered
-        if (nresources == 0)
+        if (nresources <= 0)
         {
         	for (int n = 0; n < workers.size(); n++) 
             {
@@ -307,11 +307,8 @@ public class WorkersForLife extends AbstractionLayerAI
         	int counter = 0;
         	for(Unit u : battleWorkers)
         	{
-        		System.out.println(counter);
         		if (counter >= 2)
         		{
-        			
-        			System.out.println("stacking battle worker");
         			stackUnits(u, gs, 0);
         		}
         		counter++;
@@ -499,15 +496,15 @@ public class WorkersForLife extends AbstractionLayerAI
             }
         }
         // Attack if enemy exists
-        if (closestEnemy != null && closestDistance >= 3) 
+        if (closestEnemy != null) 
         {
         	attack(u, closestEnemy);
         }
         // run unless already at the spot to run too
-        else if (base != null && closestDistance < 3)
-        {
-        	move(u, (base.getX()+1), (base.getY()+1));
-        }
+        //else if (base != null && closestDistance < 3)
+        //{
+        	//move(u, (base.getX()+1), (base.getY()+1));
+        //}
         else if (baseEnemy != null)
         {
         	attack(u, baseEnemy);
