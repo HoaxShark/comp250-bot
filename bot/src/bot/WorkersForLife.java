@@ -27,10 +27,12 @@ public class WorkersForLife extends AbstractionLayerAI
     private UnitType workerType;
     private UnitType baseType;
     private UnitType rangedType;
+    private UnitType lightType;
     private UnitType barracksType;
     private boolean tinyMap;
     
     private Unit base = null;
+    private int rangedOrLight;
     
     public WorkersForLife(UnitTypeTable utt) 
     {
@@ -40,6 +42,7 @@ public class WorkersForLife extends AbstractionLayerAI
         workerType = utt.getUnitType("Worker");
         baseType = utt.getUnitType("Base");
         rangedType = utt.getUnitType("Ranged");
+        lightType = utt.getUnitType("Light");
         barracksType = utt.getUnitType("Barracks");
         // Set up map size variable
         tinyMap = false;
@@ -99,6 +102,7 @@ public class WorkersForLife extends AbstractionLayerAI
 
         // Populate our ranged list
         List<Unit> ranged = new LinkedList<Unit>();
+        List<Unit> light = new LinkedList<Unit>();
         for (Unit u : pgs.getUnits()) 
         {
             if (u.getType() == rangedType
@@ -106,11 +110,22 @@ public class WorkersForLife extends AbstractionLayerAI
             {
                 ranged.add(u);
             }
+            if (u.getType() == lightType
+            		&& u.getPlayer() == player) 
+            {
+                light.add(u);
+            }
         }
         // Behaviour of ranged:
         for (Unit u : ranged) 
         {
         	rangedUnitBehavior(u, p, gs);
+        }
+        
+     // Behaviour of ranged:
+        for (Unit u : light) 
+        {
+        	meleeUnitBehavior(u, p, gs);
         }
         
         // Behaviour of bases:
@@ -133,9 +148,16 @@ public class WorkersForLife extends AbstractionLayerAI
                     && gs.getActionAssignment(u) == null) 
             {
                 // If enough resources train ranged unit
-                if(p.getResources() >= rangedType.cost)
+                if(p.getResources() >= rangedType.cost && rangedOrLight == 0)
                 {
                 	train(u, rangedType);
+                	rangedOrLight = 1;
+                }
+                // If enough resources train light unit
+                else if(p.getResources() >= lightType.cost && rangedOrLight == 1)
+                {
+                	train(u, lightType);
+                	rangedOrLight = 0;
                 }
             }
         }
