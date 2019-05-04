@@ -33,9 +33,7 @@ public class WorkersForLife extends AbstractionLayerAI
     private UnitType lightType;
     private UnitType barracksType;
     private boolean tinyMap;
-    
-    private Unit base = null;
-    private Unit barracks = null;
+
     private int rangedOrLight;
     
     public WorkersForLife(UnitTypeTable utt) 
@@ -77,8 +75,9 @@ public class WorkersForLife extends AbstractionLayerAI
     {
         PhysicalGameState pgs = gs.getPhysicalGameState();
         Player p = gs.getPlayer(player);
-        base = null;
-        barracks = null;
+        Unit base = null;
+        Unit barracks = null;
+        int nworkers = 0;
         
         // Define map size
         if ((pgs.getWidth() * pgs.getHeight()) <= 64)
@@ -86,35 +85,32 @@ public class WorkersForLife extends AbstractionLayerAI
             tinyMap = true;
         }
         
-        // Populate worker list
+        // Create lists to hold our units
         List<Unit> workers = new LinkedList<Unit>();
+        List<Unit> ranged = new LinkedList<Unit>();
+        List<Unit> light = new LinkedList<Unit>();
+        
+        // Populate our lists of units
         for (Unit u : pgs.getUnits()) 
         {
             if (u.getType().canHarvest
             		&& u.getPlayer() == player) 
             {
                 workers.add(u);
+                nworkers++;
             }
         	// Our base unit
         	if (u.getType().isStockpile && u.getPlayer() == p.getID()) 
             {
         		base = u;
             }
-        }
-        
-        // Behaviour of workers:
-        workersBehavior(workers, p, pgs, gs);
-
-        // Populate our ranged list
-        List<Unit> ranged = new LinkedList<Unit>();
-        List<Unit> light = new LinkedList<Unit>();
-        for (Unit u : pgs.getUnits()) 
-        {
+        	// Our ranged units
             if (u.getType() == rangedType
             		&& u.getPlayer() == player) 
             {
                 ranged.add(u);
             }
+            // Our light units
             if (u.getType() == lightType
             		&& u.getPlayer() == player) 
             {
@@ -122,15 +118,18 @@ public class WorkersForLife extends AbstractionLayerAI
             }
         }
         
+        // Behaviour of workers:
+        workersBehavior(workers, p, pgs, gs, base);
+        
         // Behaviour of ranged:
         for (Unit u : ranged) 
         {
-        	rangedUnitBehavior(u, p, gs);
+        	battleUnitBehavior(u, p, gs);
         	if (barracks != null)
         	{
 	        	if (getDistance(barracks, u) == 1)
 	        	{
-	        		stackUnits(u, gs, 1);
+	        		stackUnits(u, gs, 1, base);
 	        	}
         	}
         }
@@ -138,24 +137,21 @@ public class WorkersForLife extends AbstractionLayerAI
         // Behaviour of light:
         for (Unit u : light) 
         {
-        	meleeUnitBehavior(u, p, gs);
+        	battleUnitBehavior(u, p, gs);
         }
         
-        // Behaviour of bases:
+        // Search the unit list again to apply behaviour for bases and barracks
         for (Unit u : pgs.getUnits()) 
         {
+        	// Behaviour of bases:
             if (u.getType() == baseType
                     && u.getPlayer() == player
                     && gs.getActionAssignment(u) == null) 
             {
-            	baseBehavior(u, p, pgs);
+            	baseBehavior(u, p, nworkers);
             }
-        }
-        
-        // Behaviour of barracks:
-        for (Unit u : pgs.getUnits()) 
-        {
-        	// If our barracks and no current actions
+            
+            // Behaviour of barracks:
             if (u.getType() == barracksType
                     && u.getPlayer() == player
                     && gs.getActionAssignment(u) == null) 
@@ -180,25 +176,18 @@ public class WorkersForLife extends AbstractionLayerAI
     
     /*================Behaviours==============*/
     
-    // Basic base behaviour will keep building workers
-    public void baseBehavior(Unit u, Player p, PhysicalGameState pgs) {
-
-        int nworkers = 0;
-
-        for (Unit u2 : pgs.getUnits()) {
-        	// Our workers
-            if (u2.getType() == workerType
-                    && u2.getPlayer() == p.getID()) {
-                nworkers++;
-            }
-        }
+    // Basic base behaviour
+    public void baseBehavior(Unit u, Player p, int ourWorkers) {
+        int nworkers = ourWorkers;
+        
+        // If we can afford a worker and we have 5 or less build a new worker
         if (p.getResources() >= workerType.cost && nworkers <= 5)
         {
             train(u, workerType);
         }
     }
     
-    public void workersBehavior(List<Unit> workers, Player p, PhysicalGameState pgs, GameState gs) {
+    public void workersBehavior(List<Unit> workers, Player p, PhysicalGameState pgs, GameState gs, Unit base) {
         int nbases = 0;
         int nbarracks = 0;
         int nresources = 0;
@@ -313,7 +302,7 @@ public class WorkersForLife extends AbstractionLayerAI
         // Send battle workers to battle
         for (Unit u : battleWorkers) 
         {
-        	meleeUnitBehavior(u, p, gs);
+        	battleUnitBehavior(u, p, gs);
         }
         
         if (battleWorkers.size() >= 3 && base != null)
@@ -323,7 +312,7 @@ public class WorkersForLife extends AbstractionLayerAI
         	{
         		if (counter >= 2)
         		{
-        			stackUnits(u, gs, 0);
+        			stackUnits(u, gs, 0, base);
         		}
         		counter++;
         	}
@@ -387,81 +376,30 @@ public class WorkersForLife extends AbstractionLayerAI
         }
     }
     
-    public void meleeUnitBehavior(Unit u, Player p, GameState gs) {
+    public void battleUnitBehavior(Unit u, Player p, GameState gs) {
         PhysicalGameState pgs = gs.getPhysicalGameState();
-        Unit closestEnemy = null;
-        Unit baseEnemy = null;
-        int closestDistance = 0;
-        // Get closestEnemy
-        for (Unit u2 : pgs.getUnits()) 
-        {
-            if (u2.getPlayer() >= 0 && u2.getPlayer() != p.getID()) 
-            {
-                int d = Math.abs(u2.getX() - u.getX()) + Math.abs(u2.getY() - u.getY());
-                if (u2.getType() == baseType)
-                {
-                	baseEnemy = u2;
-                }
-                else if (closestEnemy == null || d < closestDistance) 
-                {
-                    closestEnemy = u2;
-                    closestDistance = d;
-                }
-            }
-        }
-        // Attack if enemy exists
+        // Get the closest enemy unit and base
+        Map<String, Unit> closestBaseAndEnemy = getClosestEnemy(pgs, u, p);
+        // Allocate unit and base to variables to avoid additional look ups
+        Unit closestEnemy = closestBaseAndEnemy.get("enemy");
+        Unit baseEnemy = closestBaseAndEnemy.get("base"); 
+        
+        // Attack if enemy unit exists
         if (closestEnemy != null) 
         {
         	attack(u, closestEnemy);
         }
+        // If no enemy units try to attack bases
         else if (baseEnemy != null)
         {
         	attack(u, baseEnemy);
-        }
-    }
-    
-    public void rangedUnitBehavior(Unit u, Player p, GameState gs) {
-        PhysicalGameState pgs = gs.getPhysicalGameState();
-        Unit closestEnemy = null;
-        Unit baseEnemy = null;
-        int closestDistance = 10;
-
-        // Get closestEnemy
-        for (Unit u2 : pgs.getUnits()) 
-        {
-            if (u2.getPlayer() >= 0 && u2.getPlayer() != p.getID()) 
-            {
-                int d = Math.abs(u2.getX() - u.getX()) + Math.abs(u2.getY() - u.getY());
-                if (u2.getType() == baseType)
-                {
-                	baseEnemy = u2;
-                }
-                else if (closestEnemy == null || d < closestDistance) 
-                {
-                    closestEnemy = u2;
-                    closestDistance = d;
-                }
-            }
-        }
-        // Attack if enemy exists
-        if (closestEnemy != null) 
-        {
-        	attack(u, closestEnemy);
-        }
-        else if (baseEnemy != null)
-        {
-        	attack(u, baseEnemy);
-        }
-        else
-        {
-        	attack(u, closestEnemy);
         }
     }
     
     /*===================Utility=============*/
     
     // Gets the closest enemy and base to the given unit
-    public Map<String, Unit> getClosestEnemy(PhysicalGameState pgs, Unit u, Player p)
+    private Map<String, Unit> getClosestEnemy(PhysicalGameState pgs, Unit u, Player p)
     {
     	Map<String, Unit> closestBaseAndEnemy = new HashMap<String, Unit>();
         int closestDistance = 10;
@@ -476,7 +414,7 @@ public class WorkersForLife extends AbstractionLayerAI
                 }
                 else if (closestBaseAndEnemy.get("enemy") == null || d < closestDistance) 
                 {
-                	closestBaseAndEnemy.put("enemey",u2);
+                	closestBaseAndEnemy.put("enemy",u2);
                     closestDistance = d;
                 }
             }
@@ -485,7 +423,7 @@ public class WorkersForLife extends AbstractionLayerAI
     }
     
     // Checks if we are on the left of the map
-    public boolean areWeOnTheLeft(PhysicalGameState pgs) {
+    private boolean areWeOnTheLeft(PhysicalGameState pgs, Unit base) {
         int baseX = base.getX();
         int xLocation = baseX - (pgs.getWidth()/2);
         // If positive we are on the right
@@ -500,15 +438,15 @@ public class WorkersForLife extends AbstractionLayerAI
         }
     }
     
-    public int getDistance(Unit u, Unit u2) {
+    private int getDistance(Unit u, Unit u2) {
     	int distance = Math.abs(u2.getX() - u.getX()) + Math.abs(u2.getY() - u.getY());
     	return distance;
     }
     
     // Stacks units up out of the way for when they can't attack
-    public void stackUnits(Unit u, GameState gs, int offset) {
+    private void stackUnits(Unit u, GameState gs, int offset, Unit base) {
         PhysicalGameState pgs = gs.getPhysicalGameState();
-    	boolean onTheLeft = areWeOnTheLeft(pgs);
+    	boolean onTheLeft = areWeOnTheLeft(pgs, base);
     	for (int n = 0; n < 5; n++)  {
         	if (onTheLeft) {
         		boolean checkPath = pf.pathExists(u, ((0 + offset)+(pgs.getHeight()-n)*pgs.getWidth()), gs, null);
