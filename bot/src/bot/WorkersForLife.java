@@ -1,18 +1,10 @@
 package bot;
 
-import ai.abstraction.AbstractAction;
 import ai.abstraction.AbstractionLayerAI;
-import ai.abstraction.Harvest;
 import ai.abstraction.pathfinding.AStarPathFinding;
 import ai.core.AI;
 import ai.core.ParameterSpecification;
 
-import java.io.BufferedReader;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
-import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -32,7 +24,6 @@ public class WorkersForLife extends AbstractionLayerAI
     private UnitType rangedType;
     private UnitType lightType;
     private UnitType barracksType;
-    private boolean tinyMap;
 
     private int rangedOrLight;
     
@@ -46,8 +37,7 @@ public class WorkersForLife extends AbstractionLayerAI
         rangedType = utt.getUnitType("Ranged");
         lightType = utt.getUnitType("Light");
         barracksType = utt.getUnitType("Barracks");
-        // Set up map size variable
-        tinyMap = false;
+        // Set up path finding so we can call its functions
         pf = new AStarPathFinding();
     }
     
@@ -58,8 +48,9 @@ public class WorkersForLife extends AbstractionLayerAI
         workerType = utt.getUnitType("Worker");
         baseType = utt.getUnitType("Base");
         rangedType = utt.getUnitType("Ranged");
+        lightType = utt.getUnitType("Light");
         barracksType = utt.getUnitType("Barracks");
-        tinyMap = false;
+        pf = new AStarPathFinding();
     }
 
     
@@ -78,23 +69,16 @@ public class WorkersForLife extends AbstractionLayerAI
         Unit base = null;
         Unit barracks = null;
         int nworkers = 0;
-        
-        // Define map size
-        if ((pgs.getWidth() * pgs.getHeight()) <= 64)
-        {
-            tinyMap = true;
-        }
-        
+               
         // Create lists to hold our units
         List<Unit> workers = new LinkedList<Unit>();
         List<Unit> ranged = new LinkedList<Unit>();
         List<Unit> light = new LinkedList<Unit>();
         
-        // Populate our lists of units
+        // Populate our lists and variables of units
         for (Unit u : pgs.getUnits()) 
         {
-            if (u.getType().canHarvest
-            		&& u.getPlayer() == player) 
+            if (u.getType().canHarvest && u.getPlayer() == player) 
             {
                 workers.add(u);
                 nworkers++;
@@ -105,16 +89,24 @@ public class WorkersForLife extends AbstractionLayerAI
         		base = u;
             }
         	// Our ranged units
-            if (u.getType() == rangedType
-            		&& u.getPlayer() == player) 
+            if (u.getType() == rangedType && u.getPlayer() == player) 
             {
                 ranged.add(u);
             }
             // Our light units
-            if (u.getType() == lightType
-            		&& u.getPlayer() == player) 
+            if (u.getType() == lightType && u.getPlayer() == player) 
             {
                 light.add(u);
+            }
+            // Our barracks
+            if (u.getType() == barracksType && u.getPlayer() == player)
+            {
+            	barracks = u;
+            }
+            // Our bases
+            if (u.getType() == baseType && u.getPlayer() == player)
+            {
+            	base = u;
             }
         }
         
@@ -125,6 +117,7 @@ public class WorkersForLife extends AbstractionLayerAI
         for (Unit u : ranged) 
         {
         	battleUnitBehavior(u, p, gs);
+        	// If these units are getting stuck next to the barracks, they will be stacked up
         	if (barracks != null)
         	{
 	        	if (getDistance(barracks, u) == 1)
@@ -140,41 +133,38 @@ public class WorkersForLife extends AbstractionLayerAI
         	battleUnitBehavior(u, p, gs);
         }
         
-        // Search the unit list again to apply behaviour for bases and barracks
-        for (Unit u : pgs.getUnits()) 
+    	// Behaviour of base:
+        if (base != null && gs.getActionAssignment(base) == null) 
         {
-        	// Behaviour of bases:
-            if (u.getType() == baseType
-                    && u.getPlayer() == player
-                    && gs.getActionAssignment(u) == null) 
-            {
-            	baseBehavior(u, p, nworkers);
-            }
-            
-            // Behaviour of barracks:
-            if (u.getType() == barracksType
-                    && u.getPlayer() == player
-                    && gs.getActionAssignment(u) == null) 
-            {
-                // If enough resources train ranged unit
-                if(p.getResources() >= rangedType.cost && rangedOrLight == 0)
-                {
-                	train(u, rangedType);
-                	rangedOrLight = 1;
-                }
-                // If enough resources train light unit
-                else if(p.getResources() >= lightType.cost && rangedOrLight == 1)
-                {
-                	train(u, lightType);
-                	rangedOrLight = 0;
-                }
-            }
+        	baseBehavior(base, p, nworkers);
         }
-                       
+        
+        // Behaviour of barracks:
+        if (barracks != null && gs.getActionAssignment(barracks) == null) 
+        {
+            barracksBehaviour(barracks, p);
+        }
+                              
         return translateActions(player, gs);
     }
     
     /*================Behaviours==============*/
+    
+    // Barracks Behaviour
+    public void barracksBehaviour(Unit barracks, Player p) {
+    	// If enough resources train ranged unit
+        if(p.getResources() >= rangedType.cost && rangedOrLight == 0)
+        {
+        	train(barracks, rangedType);
+        	rangedOrLight = 1;
+        }
+        // If enough resources train light unit
+        else if(p.getResources() >= lightType.cost && rangedOrLight == 1)
+        {
+        	train(barracks, lightType);
+        	rangedOrLight = 0;
+        }
+    }
     
     // Basic base behaviour
     public void baseBehavior(Unit u, Player p, int ourWorkers) {
@@ -227,12 +217,12 @@ public class WorkersForLife extends AbstractionLayerAI
         }
         
         // If playing on a bigger map have more free workers
-        if (!tinyMap)
+        if ((pgs.getWidth() * pgs.getHeight()) > 64)
         {
         	workerOffset = 1;
         }
         
-        // If no resources left to be gathered
+        // If no resources left to be gathered send all workers to battle
         if (nresources <= 0)
         {
         	for (int n = 0; n < workers.size(); n++) 
@@ -266,29 +256,25 @@ public class WorkersForLife extends AbstractionLayerAI
         	// Build a barracks
             if (p.getResources() >= 6) {
             	Unit u = freeWorkers.remove(0);
-            	// subtract half the width from the base location
+            	
             	if (base != null)
             	{
-                	int baseX = base.getX();
-                	int xLocation = baseX - (pgs.getWidth()/2);
-                	// If positive we are on the right
-                	if (xLocation >= 0)
+            		// Check which side of the map we are on
+            		boolean leftSide = areWeOnTheLeft(pgs, base);
+            		// Build a barracks in the set locations depending on our side of the map
+                	if (!leftSide)
                 	{
                         buildIfNotAlreadyBuilding(u, barracksType, (base.getX()+2), (base.getY()-2) , reservedPositions, p, pgs);
                 	}
-                	// If negative we are on the left
-                	if (xLocation <= 0)
+                	if (leftSide)
                 	{
                         buildIfNotAlreadyBuilding(u, barracksType, (base.getX()-2), (base.getY()+4) , reservedPositions, p, pgs);
                 	}
             	}
-            	if (base == null)
-            	{
-                    buildIfNotAlreadyBuilding(u, barracksType, u.getX(), u.getY(), reservedPositions, p, pgs);
-            	}
             }
         }
         
+        // If our base dies try to replace it
         if (nbases == 0 && !freeWorkers.isEmpty()) 
         {
             // Build a base:
@@ -305,6 +291,7 @@ public class WorkersForLife extends AbstractionLayerAI
         	battleUnitBehavior(u, p, gs);
         }
         
+        // If we have a certain number of battleWorkers start stacking some out of the way
         if (battleWorkers.size() >= 3 && base != null)
         {
         	int counter = 0;
@@ -318,61 +305,10 @@ public class WorkersForLife extends AbstractionLayerAI
         	}
         }
 
-        // Harvest with all the free workers:
+        // Harvest with all the free workers, do this last.
         if (nresources != 0) 
         {
-	        for (Unit u : freeWorkers) 
-	        {
-	            Unit closestBase = null;
-	            Unit closestResource = null;
-	            int closestDistance = 0;
-	            // Get closest resource
-	            for (Unit u2 : pgs.getUnits()) 
-	            {
-	                if (u2.getType().isResource) 
-	                {
-	                    int d = Math.abs(u2.getX() - u.getX()) + Math.abs(u2.getY() - u.getY());
-	                    if (closestResource == null || d < closestDistance) 
-	                    {
-	                        closestResource = u2;
-	                        closestDistance = d;
-	                    }
-	                }
-	            }
-	            // Reset closestDistance
-	            closestDistance = 0;
-	            // Get closestBase
-	            for (Unit u2 : pgs.getUnits()) 
-	            {
-	                if (u2.getType().isStockpile && u2.getPlayer() == p.getID()) 
-	                {
-	                    int d = Math.abs(u2.getX() - u.getX()) + Math.abs(u2.getY() - u.getY());
-	                    if (closestBase == null || d < closestDistance) 
-	                    {
-	                        closestBase = u2;
-	                        closestDistance = d;
-	                    }
-	                }
-	            }
-	            // If we have a base and resource then harvest!
-	            if (closestResource != null && closestBase != null) 
-	            {
-	            	//harvest(u, closestResource, closestBase);
-	                AbstractAction aa = getAbstractAction(u);
-	                if (aa instanceof Harvest) 
-	                {
-	                    Harvest h_aa = (Harvest) aa;
-	                    if (h_aa.getTarget() != closestResource || h_aa.getBase() != closestBase) 
-	                    {
-	                        harvest(u, closestResource, closestBase);
-	                    }
-	                } 
-	                else 
-	                {
-	                    harvest(u, closestResource, closestBase);
-	                }
-	            }
-	        }
+	        workerHarvest(freeWorkers, pgs, p);
         }
     }
     
@@ -397,6 +333,49 @@ public class WorkersForLife extends AbstractionLayerAI
     }
     
     /*===================Utility=============*/
+    
+    private void workerHarvest(List<Unit> freeWorkers, PhysicalGameState pgs, Player p)
+    {
+    	for (Unit u : freeWorkers) 
+        {
+            Unit closestBase = null;
+            Unit closestResource = null;
+            int closestDistance = 0;
+            // Get closest resource
+            for (Unit u2 : pgs.getUnits()) 
+            {
+                if (u2.getType().isResource) 
+                {
+                    int d = getDistance(u,u2);
+                    if (closestResource == null || d < closestDistance) 
+                    {
+                        closestResource = u2;
+                        closestDistance = d;
+                    }
+                }
+            }
+            // Reset closestDistance
+            closestDistance = 0;
+            // Get closestBase
+            for (Unit u2 : pgs.getUnits()) 
+            {
+                if (u2.getType().isStockpile && u2.getPlayer() == p.getID()) 
+                {
+                    int d = getDistance(u,u2);
+                    if (closestBase == null || d < closestDistance) 
+                    {
+                        closestBase = u2;
+                        closestDistance = d;
+                    }
+                }
+            }
+            // If we have a base and resource then harvest!
+            if (closestResource != null && closestBase != null) 
+            {
+            	harvest(u, closestResource, closestBase);
+            }
+        }
+    }
     
     // Gets the closest enemy and base to the given unit
     private Map<String, Unit> getClosestEnemy(PhysicalGameState pgs, Unit u, Player p)
