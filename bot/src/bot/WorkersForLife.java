@@ -16,6 +16,10 @@ import rts.units.Unit;
 import rts.units.UnitType;
 import rts.units.UnitTypeTable;
 
+/** An AI for MicroRTS, this bot focuses on countering worker rushes and trying to build
+ * a barracks when possible to get ranged and light units out.
+ * @author HoaxShark
+ */
 public class WorkersForLife extends AbstractionLayerAI 
 {    
     private UnitTypeTable utt;
@@ -25,19 +29,20 @@ public class WorkersForLife extends AbstractionLayerAI
     private UnitType lightType;
     private UnitType barracksType;
 
-    private int rangedOrLight;
+    private int rangedOrLight; /**< Is used to decide between the barracks making a ranged or light unit, 
+    							when set to 0 or 1 respectively. Is an int so it can expanded upon for other unit types if desired */
     
     public WorkersForLife(UnitTypeTable utt) 
     {
         super(new AStarPathFinding());
         this.utt = utt;
-        // Set up unit types
+        /// Set up unit types
         workerType = utt.getUnitType("Worker");
         baseType = utt.getUnitType("Base");
         rangedType = utt.getUnitType("Ranged");
         lightType = utt.getUnitType("Light");
         barracksType = utt.getUnitType("Barracks");
-        // Set up path finding so we can call its functions
+        /// Set up path finding so we can call its functions
         pf = new AStarPathFinding();
     }
     
@@ -60,64 +65,67 @@ public class WorkersForLife extends AbstractionLayerAI
         return new WorkersForLife(utt);
     }
    
-    
+    /** Called each tick this is the main body of the AI.
+     * Populates lists of various units and tells what to do depending on the state of the match.
+     */
     @Override
     public PlayerAction getAction(int player, GameState gs) 
     {
         PhysicalGameState pgs = gs.getPhysicalGameState();
         Player p = gs.getPlayer(player);
-        Unit base = null;
-        Unit barracks = null;
-        int nworkers = 0;
+        Unit base = null; ///< Our base, we will only ever have one currently
+        Unit barracks = null; ///< Our barracks, we will only ever have one currently
+        int nworkers = 0; ///< How many workers we have
                
-        // Create lists to hold our units
+        /// Create lists to hold our units
         List<Unit> workers = new LinkedList<Unit>();
         List<Unit> ranged = new LinkedList<Unit>();
         List<Unit> light = new LinkedList<Unit>();
         
-        // Populate our lists and variables of units
+        /// Populate our lists and variables of units
         for (Unit u : pgs.getUnits()) 
         {
+        	/// Our workers
             if (u.getType().canHarvest && u.getPlayer() == player) 
             {
                 workers.add(u);
                 nworkers++;
             }
-        	// Our base unit
+        	/// Our base unit
         	if (u.getType().isStockpile && u.getPlayer() == p.getID()) 
             {
         		base = u;
             }
-        	// Our ranged units
+        	/// Our ranged units
             if (u.getType() == rangedType && u.getPlayer() == player) 
             {
                 ranged.add(u);
             }
-            // Our light units
+            /// Our light units
             if (u.getType() == lightType && u.getPlayer() == player) 
             {
                 light.add(u);
             }
-            // Our barracks
+            /// Our barracks
             if (u.getType() == barracksType && u.getPlayer() == player)
             {
             	barracks = u;
             }
-            // Our bases
+            /// Our bases
             if (u.getType() == baseType && u.getPlayer() == player)
             {
             	base = u;
             }
         }
         
-        // Behaviour of workers:
+        /// Apply behaviour to workers
         workersBehavior(workers, p, pgs, gs, base);
         
-        // Behaviour of ranged:
+        /// Cycle through all ranged units and apply behaviour
         for (Unit u : ranged) 
         {
         	battleUnitBehavior(u, p, gs);
-        	// If these units are getting stuck next to the barracks, they will be stacked up
+        	/// If this unit is getting stuck next to the barracks, it will be stacked up
         	if (barracks != null)
         	{
 	        	if (getDistance(barracks, u) == 1)
@@ -127,19 +135,19 @@ public class WorkersForLife extends AbstractionLayerAI
         	}
         }
         
-        // Behaviour of light:
+        /// Cycle through all light units and apply behaviour
         for (Unit u : light) 
         {
         	battleUnitBehavior(u, p, gs);
         }
         
-    	// Behaviour of base:
+    	/// If our base is not building something then apply base behaviour
         if (base != null && gs.getActionAssignment(base) == null) 
         {
-        	baseBehavior(base, p, nworkers);
+        	baseBehavior(base, p, nworkers, 5);
         }
         
-        // Behaviour of barracks:
+        /// If our barracks is not building something then apply base behaviour
         if (barracks != null && gs.getActionAssignment(barracks) == null) 
         {
             barracksBehaviour(barracks, p);
@@ -150,79 +158,99 @@ public class WorkersForLife extends AbstractionLayerAI
     
     /*================Behaviours==============*/
     
-    // Barracks Behaviour
+    /** Behaviour for barracks.
+     * Called when the barracks is not building anything, will try to build light or ranged units.
+     * Expand this behaviour if wanting to bring in different unit types or build orders.
+     * @param barracks Our barracks
+     * @param p Our player id
+     */
     public void barracksBehaviour(Unit barracks, Player p) {
-    	// If enough resources train ranged unit
+    	/// If enough resources train ranged unit
         if(p.getResources() >= rangedType.cost && rangedOrLight == 0)
         {
         	train(barracks, rangedType);
+        	/// Set the next unit to be built as light
         	rangedOrLight = 1;
         }
-        // If enough resources train light unit
+        /// If enough resources train light unit
         else if(p.getResources() >= lightType.cost && rangedOrLight == 1)
         {
         	train(barracks, lightType);
+        	/// Set the next unit to be built as ranged
         	rangedOrLight = 0;
         }
     }
     
-    // Basic base behaviour
-    public void baseBehavior(Unit u, Player p, int ourWorkers) {
-        int nworkers = ourWorkers;
-        
-        // If we can afford a worker and we have 5 or less build a new worker
-        if (p.getResources() >= workerType.cost && nworkers <= 5)
+    /** Behaviour for base.
+     * Builds new workers if we have the resources and are not over the maxWorkers
+     * @param base Our base
+     * @param p Our player id
+     * @param ourWorkers Number of workers we have
+     * @param maxWorkers Max number of workers we want to have
+     */
+    public void baseBehavior(Unit base, Player p, int ourWorkers, int maxWorkers) {      
+        /// If we can afford a worker and we have maxWorkers or less build a new worker
+        if (p.getResources() >= workerType.cost && ourWorkers <= maxWorkers)
         {
-            train(u, workerType);
+            train(base, workerType);
         }
     }
     
+    /** Behaviour for workers.
+     * Takes the list of workers and delegates them to either free or battle workers depending on the current state of the game
+     * Then applies behaviours to those individual lists. Here we deal with harvesting, and building barracks or bases.
+     * @param workers List of all our workers
+     * @param p Our player id
+     * @param pgs The PhysicalGameState
+     * @param gs The GameState
+     * @param base Our base
+     */
     public void workersBehavior(List<Unit> workers, Player p, PhysicalGameState pgs, GameState gs, Unit base) {
-        int nbases = 0;
-        int nbarracks = 0;
-        int nresources = 0;
-        int workerOffset = 0; // Allocates more free workers
+        int nbases = 0; /**< Number of bases we have, currently will only ever be 0 or 1 but has been designed
+        					with the idea of expansion in mind. */
+        int nbarracks = 0; /**< Number of barracks we have, currently will only ever be 0 or 1 but has been designed
+								with the idea of expansion in mind. */
+        int nresources = 0;	///< Number of resource piles on the map
+        int workerOffset = 0; ///< Allocates more free workers set to higher for bigger maps
         
-        // Workers that can be used for harvesting and building
-        List<Unit> freeWorkers = new LinkedList<Unit>();
-        // Workers that can be send to fight
-        List<Unit> battleWorkers = new LinkedList<Unit>();
+        List<Unit> freeWorkers = new LinkedList<Unit>(); ///< Workers that can be used for harvesting and building
+        List<Unit> battleWorkers = new LinkedList<Unit>(); ///< Workers that can be send to fight
         
-        // If the worker list is empty return
+        /// If the worker list is empty return
         if (workers.isEmpty()) 
         {
             return;
         }
         
-        // Checks number of worker and bases the player has
+        /// Check number of worker and bases the player has and the resources piles on the map
         for (Unit u2 : pgs.getUnits()) 
         {
-        	// Our bases
+        	/// Our bases
             if (u2.getType() == baseType
                     && u2.getPlayer() == p.getID()) 
             {
                 nbases++;
             }
-            // Our barracks
+            /// Our barracks
             if (u2.getType() == barracksType
                     && u2.getPlayer() == p.getID()) 
             {
                 nbarracks++;
             }
-            // Resource piles on the map
+            /// Resource piles on the map
             if (u2.getType().isResource) 
             {
             	nresources++;
             }
         }
         
-        // If playing on a bigger map have more free workers
+        /// If playing on a bigger map have more free workers
         if ((pgs.getWidth() * pgs.getHeight()) > 64)
         {
         	workerOffset = 1;
         }
         
-        // If no resources left to be gathered send all workers to battle
+        /// If no resources left to be gathered send all workers to battle
         if (nresources <= 0)
         {
         	for (int n = 0; n < workers.size(); n++) 
@@ -235,7 +263,7 @@ public class WorkersForLife extends AbstractionLayerAI
             }
         }
         
-        // Applies workers for each base to free workers
+        /// Applies workers for each base to free workers
         if (workers.size() >= (nbases) && nresources !=0)
         {
             for (int n = 0; n < (nbases + workerOffset); n++) 
@@ -246,22 +274,23 @@ public class WorkersForLife extends AbstractionLayerAI
                     workers.remove(0);
             	}
             }
-            // All other workers to battle
+            /// All other workers to battle
             battleWorkers.addAll(workers);
         } 
 
-        List<Integer> reservedPositions = new LinkedList<Integer>();
+        List<Integer> reservedPositions = new LinkedList<Integer>(); ///< List of reserved building positions
+        /// Consider building a barracks
         if (nbarracks == 0 && !freeWorkers.isEmpty())
         {
-        	// Build a barracks
+        	/// Build a barracks if we have enough resources
             if (p.getResources() >= 6) {
             	Unit u = freeWorkers.remove(0);
-            	
+            	/// Do a null check on the base 
             	if (base != null)
             	{
-            		// Check which side of the map we are on
+            		/// Check which side of the map we are on
             		boolean leftSide = areWeOnTheLeft(pgs, base);
-            		// Build a barracks in the set locations depending on our side of the map
+            		/// Build a barracks in the set locations depending on our side of the map
                 	if (!leftSide)
                 	{
                         buildIfNotAlreadyBuilding(u, barracksType, (base.getX()+2), (base.getY()-2) , reservedPositions, p, pgs);
@@ -274,10 +303,10 @@ public class WorkersForLife extends AbstractionLayerAI
             }
         }
         
-        // If our base dies try to replace it
+        /// If our base dies try to replace it
         if (nbases == 0 && !freeWorkers.isEmpty()) 
         {
-            // Build a base:
+            /// Build a base
             if (p.getResources() >= baseType.cost) 
             {
                 Unit u = freeWorkers.remove(0);
@@ -285,13 +314,13 @@ public class WorkersForLife extends AbstractionLayerAI
             }
         }
         
-        // Send battle workers to battle
+        /// Send battle workers to battle
         for (Unit u : battleWorkers) 
         {
         	battleUnitBehavior(u, p, gs);
         }
         
-        // If we have a certain number of battleWorkers start stacking some out of the way
+        /// If we have a certain number of battleWorkers start stacking some out of the way
         if (battleWorkers.size() >= 3 && base != null)
         {
         	int counter = 0;
@@ -305,27 +334,34 @@ public class WorkersForLife extends AbstractionLayerAI
         	}
         }
 
-        // Harvest with all the free workers, do this last.
+        /// Harvest with all the free workers, do this last.
         if (nresources != 0) 
         {
 	        workerHarvest(freeWorkers, pgs, p);
         }
     }
     
+    /** Battle unit behaviour.
+     * Used to send a unit to fight, gets the closest base and enemy unit.
+     * Prioritises killing units over bases, always aiming for the closest one.
+     * @param u Our unit we are commanding
+     * @param p Our player id
+     * @param gs The GameState
+     */
     public void battleUnitBehavior(Unit u, Player p, GameState gs) {
         PhysicalGameState pgs = gs.getPhysicalGameState();
-        // Get the closest enemy unit and base
+        /// Get the closest enemy unit and base
         Map<String, Unit> closestBaseAndEnemy = getClosestEnemy(pgs, u, p);
-        // Allocate unit and base to variables to avoid additional look ups
+        /// Allocate unit and base to variables to avoid additional look ups
         Unit closestEnemy = closestBaseAndEnemy.get("enemy");
         Unit baseEnemy = closestBaseAndEnemy.get("base"); 
         
-        // Attack if enemy unit exists
+        /// Attack if enemy unit exists
         if (closestEnemy != null) 
         {
         	attack(u, closestEnemy);
         }
-        // If no enemy units try to attack bases
+        /// If no enemy units try to attack bases
         else if (baseEnemy != null)
         {
         	attack(u, baseEnemy);
