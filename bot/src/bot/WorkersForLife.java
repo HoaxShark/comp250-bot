@@ -29,8 +29,8 @@ public class WorkersForLife extends AbstractionLayerAI
     private UnitType lightType;
     private UnitType barracksType;
 
-    private int rangedOrLight; /**< Is used to decide between the barracks making a ranged or light unit, 
-    							when set to 0 or 1 respectively. Is an int so it can expanded upon for other unit types if desired */
+    private int rangedOrLight = 1; /**< Is used to decide between the barracks making a ranged or light unit, 
+    									when set to 0 or 1 respectively. Is an int so it can expanded upon for other unit types if desired */
     
     public WorkersForLife(UnitTypeTable utt) 
     {
@@ -144,7 +144,7 @@ public class WorkersForLife extends AbstractionLayerAI
     	/// If our base is not building something then apply base behaviour
         if (base != null && gs.getActionAssignment(base) == null) 
         {
-        	baseBehavior(base, p, nworkers, 5);
+        	baseBehavior(base, barracks, p, nworkers, 5);
         }
         
         /// If our barracks is not building something then apply base behaviour
@@ -171,6 +171,7 @@ public class WorkersForLife extends AbstractionLayerAI
         	train(barracks, rangedType);
         	/// Set the next unit to be built as light
         	rangedOrLight = 1;
+        	return;
         }
         /// If enough resources train light unit
         else if(p.getResources() >= lightType.cost && rangedOrLight == 1)
@@ -178,19 +179,27 @@ public class WorkersForLife extends AbstractionLayerAI
         	train(barracks, lightType);
         	/// Set the next unit to be built as ranged
         	rangedOrLight = 0;
+        	return;
         }
     }
     
     /** Behaviour for base.
      * Builds new workers if we have the resources and are not over the maxWorkers
+     * If we have a barracks we need to have a higher resource count before building a worker so the barracks always
+     * has access to enough resources.
      * @param base Our base
      * @param p Our player
      * @param ourWorkers Number of workers we have
      * @param maxWorkers Max number of workers we want to have
      */
-    public void baseBehavior(Unit base, Player p, int ourWorkers, int maxWorkers) {      
+    public void baseBehavior(Unit base, Unit barracks, Player p, int ourWorkers, int maxWorkers) {   
+    	/// If we have a barracks make sure there is enough resources to build in it
+    	if (barracks != null && p.getResources() >= 4 && ourWorkers <= maxWorkers)
+    	{
+    		train(base, workerType);
+    	}
         /// If we can afford a worker and we have maxWorkers or less build a new worker
-        if (p.getResources() >= workerType.cost && ourWorkers <= maxWorkers)
+    	else if (barracks == null && p.getResources() >= workerType.cost && ourWorkers <= maxWorkers)
         {
             train(base, workerType);
         }
@@ -414,7 +423,7 @@ public class WorkersForLife extends AbstractionLayerAI
             {
             	harvest(u, closestResource, closestBase);
             }
-            else
+            else if (closestDistance >= 8)
             {
             	battleUnitBehavior(u,p,pgs);
             }
