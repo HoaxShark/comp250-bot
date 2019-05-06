@@ -1,3 +1,5 @@
+# The code for my bot is at [bot/src/bot](https://github.com/HoaxShark/comp250-bot/tree/master/bot/src/bot)
+
 # comp250-bot
 
 This is the base repository for COMP250 assignment 1, task 2 (MicroRTS bot).
