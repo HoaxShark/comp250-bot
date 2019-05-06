@@ -126,7 +126,7 @@ public class WorkersForLife extends AbstractionLayerAI
         {
         	battleUnitBehavior(u, p, pgs);
         	/// If this unit is getting stuck next to the barracks, it will be stacked up
-        	if (barracks != null)
+        	if (barracks != null && base != null)
         	{
 	        	if (getDistance(barracks, u) == 1)
 	        	{
