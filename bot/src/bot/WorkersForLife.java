@@ -284,7 +284,7 @@ public class WorkersForLife extends AbstractionLayerAI
         if (nbarracks == 0 && !freeWorkers.isEmpty())
         {
         	/// Build a barracks if we have enough resources
-            if (p.getResources() >= 6 && nworkers >= 5) {
+            if (p.getResources() >= 6 && nworkers >= 4) {
             	Unit u = freeWorkers.remove(0);
             	/// Do a null check on the base 
             	if (base != null)
@@ -410,7 +410,7 @@ public class WorkersForLife extends AbstractionLayerAI
                 }
             }
             /// If we have a base and resource then harvest, so long as the resource isn't too far away
-            if (closestResource != null && closestBase != null && closestDistance <= 6) 
+            if (closestResource != null && closestBase != null && closestDistance <= 4) 
             {
             	harvest(u, closestResource, closestBase);
             }
